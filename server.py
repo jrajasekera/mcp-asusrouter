@@ -18,6 +18,7 @@ from asusrouter.modules.wlan import AsusWLAN, Wlan
 from mcp.server.fastmcp import FastMCP
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from tool_helpers import format_pc_rules
+from asusrouter.modules.parental_control import ParentalControlRule, PCRuleType
 from typing import Dict, Any, Tuple, List, Optional
 
 mcp = FastMCP("Asus Router MCP Server", dependencies=["aiohttp", "asusrouter"])
@@ -1435,6 +1436,65 @@ async def list_parental_control_rules() -> Dict[str, Any]:
         try:
             data = await router.async_get_data(AsusData.PARENTAL_CONTROL)
             return {"rules": format_pc_rules(data)}
+        finally:
+            await router.async_disconnect()
+            await session.close()
+    except Exception as e:
+        return {"error": str(e)}
+
+
+@mcp.tool()
+async def block_device(mac: str, name: str = "") -> Dict[str, Any]:
+    """Block a device's internet access by MAC address (persistent).
+
+    Adds a BLOCK parental-control rule. Existing rules are preserved.
+
+    Parameters:
+        mac (str): Device MAC address, e.g. "AA:BB:CC:DD:EE:FF".
+        name (str): Optional friendly name for the rule.
+
+    Returns:
+        Dict[str, Any]: Confirmation or error.
+    """
+    try:
+        router, session = await create_router_connection()
+        try:
+            # Populate router state so the merge preserves other rules.
+            await router.async_get_data(AsusData.PARENTAL_CONTROL)
+            rule = ParentalControlRule(mac=mac, name=name, type=PCRuleType.BLOCK)
+            success = await router.async_set_state(rule, expect_modify=True)
+            if success:
+                return {"message": f"Device {mac} blocked."}
+            return {"error": f"Failed to block device {mac}."}
+        finally:
+            await router.async_disconnect()
+            await session.close()
+    except Exception as e:
+        return {"error": str(e)}
+
+
+@mcp.tool()
+async def unblock_device(mac: str) -> Dict[str, Any]:
+    """Remove the parental-control rule for a device by MAC address.
+
+    Parameters:
+        mac (str): Device MAC address.
+
+    Returns:
+        Dict[str, Any]: Confirmation, or a message if no such rule exists.
+    """
+    try:
+        router, session = await create_router_connection()
+        try:
+            data = await router.async_get_data(AsusData.PARENTAL_CONTROL)
+            existing = {r["mac"] for r in format_pc_rules(data)}
+            if mac not in existing:
+                return {"message": f"No parental-control rule found for {mac}"}
+            rule = ParentalControlRule(mac=mac, type=PCRuleType.REMOVE)
+            success = await router.async_set_state(rule, expect_modify=True)
+            if success:
+                return {"message": f"Rule for {mac} removed."}
+            return {"error": f"Failed to remove rule for {mac}."}
         finally:
             await router.async_disconnect()
             await session.close()
