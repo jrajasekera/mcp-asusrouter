@@ -16,3 +16,9 @@ def test_read_tools_registered():
 def test_block_tools_registered():
     names = _tool_names()
     assert {"block_device", "unblock_device"} <= names
+
+
+def test_schedule_tool_registered_and_total_count():
+    names = _tool_names()
+    assert "schedule_device_block" in names
+    assert len(names) == 46

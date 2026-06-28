@@ -17,7 +17,7 @@ from asusrouter.modules.wlan import AsusWLAN, Wlan
 
 from mcp.server.fastmcp import FastMCP
 from pydantic_settings import BaseSettings, SettingsConfigDict
-from tool_helpers import format_pc_rules
+from tool_helpers import build_timemap, format_pc_rules, ScheduleEncodingError
 from asusrouter.modules.parental_control import ParentalControlRule, PCRuleType
 from typing import Dict, Any, Tuple, List, Optional
 
@@ -1495,6 +1495,68 @@ async def unblock_device(mac: str) -> Dict[str, Any]:
             if success:
                 return {"message": f"Rule for {mac} removed."}
             return {"error": f"Failed to remove rule for {mac}."}
+        finally:
+            await router.async_disconnect()
+            await session.close()
+    except Exception as e:
+        return {"error": str(e)}
+
+
+@mcp.tool()
+async def schedule_device_block(
+    mac: str,
+    name: str = "",
+    days: Optional[List[str]] = None,
+    start_time: Optional[str] = None,
+    end_time: Optional[str] = None,
+    timemap: Optional[str] = None,
+) -> Dict[str, Any]:
+    """Block a device on a recurring time schedule.
+
+    Adds a TIME-type parental-control rule. Provide EITHER a raw ``timemap``
+    string (ASUS MULTIFILTER_MACFILTER_DAYTIME_V2 format — the trusted path),
+    OR friendly ``days`` + ``start_time`` + ``end_time``. Note: automatic
+    encoding of friendly inputs is not yet verified for all firmware and may
+    return an error asking for a raw ``timemap``. With no schedule args the
+    router's default schedule is used. Existing rules are preserved.
+
+    Parameters:
+        mac (str): Device MAC address.
+        name (str): Optional friendly name.
+        days (list[str]): Weekday names, e.g. ["Mon", "Tue"].
+        start_time (str): "HH:MM" 24h.
+        end_time (str): "HH:MM" 24h.
+        timemap (str): Raw ASUS timemap string (overrides days/start/end).
+
+    Returns:
+        Dict[str, Any]: Confirmation or error.
+    """
+    try:
+        if timemap:
+            resolved_timemap: Optional[str] = timemap
+        elif days or start_time or end_time:
+            if not (days and start_time and end_time):
+                return {"error": "Provide days, start_time and end_time together, or pass a raw timemap."}
+            try:
+                resolved_timemap = build_timemap(days, start_time, end_time)
+            except (ValueError, ScheduleEncodingError) as e:
+                return {"error": str(e)}
+        else:
+            resolved_timemap = None  # library default schedule
+
+        router, session = await create_router_connection()
+        try:
+            await router.async_get_data(AsusData.PARENTAL_CONTROL)
+            if resolved_timemap is not None:
+                rule = ParentalControlRule(
+                    mac=mac, name=name, type=PCRuleType.TIME, timemap=resolved_timemap
+                )
+            else:
+                rule = ParentalControlRule(mac=mac, name=name, type=PCRuleType.TIME)
+            success = await router.async_set_state(rule, expect_modify=True)
+            if success:
+                return {"message": f"Scheduled block applied for {mac}."}
+            return {"error": f"Failed to apply scheduled block for {mac}."}
         finally:
             await router.async_disconnect()
             await session.close()
