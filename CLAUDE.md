@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this is
 
-An MCP server that exposes ASUS router monitoring and management as 41 tools for
+An MCP server that exposes ASUS router monitoring and management as 46 tools for
 AI agents. It is a thin FastMCP wrapper over the [`asusrouter`](https://pypi.org/project/asusrouter/)
 PyPI library — the router protocol/domain logic lives in that dependency, not in
 this repo.
@@ -19,7 +19,7 @@ This is a [`uv`](https://docs.astral.sh/uv/) project.
 
 There is **no automated test suite**. To verify the server actually serves
 tools, launch it and complete an MCP `initialize` + `tools/list` handshake with
-any MCP client — it should report 41 tools. Listing tools does not connect to a
+any MCP client — it should report 46 tools. Listing tools does not connect to a
 router, so dummy credentials are sufficient for that check.
 
 ## Configuration
@@ -42,7 +42,7 @@ away from an in-source config dict. `.env` is git-ignored; `.env.example` is not
 
 Everything lives in `server.py` (~1400 lines):
 
-- A single `FastMCP` instance named `mcp`, with 41 `@mcp.tool()`-decorated async
+- A single `FastMCP` instance named `mcp`, with 46 `@mcp.tool()`-decorated async
   functions. `if __name__ == "__main__": mcp.run()` serves them over stdio.
 - `RouterSettings` is instantiated at **import time** as the module-level
   `settings`. Consequence: importing `server.py` fails fast with a pydantic

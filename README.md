@@ -153,6 +153,16 @@ Below are all available tools with descriptions and numbered example prompts.
     Ping google.com from my router to check connectivity
     ```
 
+### Dynamic DNS
+
+42. **get_ddns_status**
+    Retrieves the router's Dynamic DNS configuration and current registration status.
+
+    Example prompt:
+    ```
+    Show me my DDNS settings and whether my hostname is currently registered
+    ```
+
 ### System Performance
 
 12. **get_system_info**
@@ -243,6 +253,38 @@ Below are all available tools with descriptions and numbered example prompts.
     Example prompt:
     ```
     Disable all port forwarding rules temporarily
+    ```
+
+43. **list_parental_control_rules**
+    Lists all active parental control rules with device names, MAC addresses, and current block status.
+
+    Example prompt:
+    ```
+    Show me all parental control rules and which devices are currently blocked
+    ```
+
+44. **block_device**
+    Blocks a device from internet access by adding an always-on parental control rule for the given MAC address.
+
+    Example prompt:
+    ```
+    Block the device with MAC address AA:BB:CC:DD:EE:FF from the internet
+    ```
+
+45. **schedule_device_block**
+    Applies a scheduled parental control block for a device. You can pass a raw `timemap` string directly; friendly day/time scheduling is accepted but the timemap encoding is not yet hardware-verified.
+
+    Example prompt:
+    ```
+    Schedule internet access block for AA:BB:CC:DD:EE:FF using timemap "W00000000000000000000000000000000000000000000000000"
+    ```
+
+46. **unblock_device**
+    Removes an existing parental control block rule for the specified MAC address, restoring internet access.
+
+    Example prompt:
+    ```
+    Unblock the device with MAC address AA:BB:CC:DD:EE:FF and restore its internet access
     ```
 
 ### VPN Management
