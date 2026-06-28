@@ -17,6 +17,7 @@ from asusrouter.modules.wlan import AsusWLAN, Wlan
 
 from mcp.server.fastmcp import FastMCP
 from pydantic_settings import BaseSettings, SettingsConfigDict
+from tool_helpers import format_pc_rules
 from typing import Dict, Any, Tuple, List, Optional
 
 mcp = FastMCP("Asus Router MCP Server", dependencies=["aiohttp", "asusrouter"])
@@ -1394,6 +1395,52 @@ async def set_wifi_radio_state(band: str, enable: bool) -> Dict[str, Any]:
             await session.close()
     except Exception as e:
         return {"error": f"Error setting WiFi radio state: {str(e)}"}
+
+@mcp.tool()
+async def get_ddns_status() -> Dict[str, Any]:
+    """Get Dynamic DNS (DDNS) status.
+
+    Reports whether DDNS is active, the registered hostname, and the latest
+    status code with a human-readable hint. Read-only.
+
+    Returns:
+        Dict[str, Any]: {"ddns": <status data>} or a message if unavailable.
+    """
+    try:
+        router, session = await create_router_connection()
+        try:
+            data = await router.async_get_data(AsusData.DDNS)
+            if data is None:
+                return {"message": "No DDNS data available"}
+            return {"ddns": data}
+        finally:
+            await router.async_disconnect()
+            await session.close()
+    except Exception as e:
+        return {"error": str(e)}
+
+
+@mcp.tool()
+async def list_parental_control_rules() -> Dict[str, Any]:
+    """List per-device parental-control rules.
+
+    Returns each rule's MAC, friendly name, type (BLOCK/TIME/DISABLE), and raw
+    timemap schedule string.
+
+    Returns:
+        Dict[str, Any]: {"rules": [{"mac", "name", "type", "timemap"}, ...]}.
+    """
+    try:
+        router, session = await create_router_connection()
+        try:
+            data = await router.async_get_data(AsusData.PARENTAL_CONTROL)
+            return {"rules": format_pc_rules(data)}
+        finally:
+            await router.async_disconnect()
+            await session.close()
+    except Exception as e:
+        return {"error": str(e)}
+
 
 # Main execution
 if __name__ == "__main__":
