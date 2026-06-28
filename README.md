@@ -272,11 +272,11 @@ Below are all available tools with descriptions and numbered example prompts.
     ```
 
 45. **schedule_device_block**
-    Applies a scheduled parental control block for a device. You can pass a raw `timemap` string directly; friendly day/time scheduling is accepted but the timemap encoding is not yet hardware-verified.
+    Applies a scheduled parental control block for a device. Pass friendly `days` + `start_time` + `end_time` and it's encoded into the ASUS timemap format, or pass a raw `timemap` string to override.
 
     Example prompt:
     ```
-    Schedule internet access block for AA:BB:CC:DD:EE:FF using timemap "W00000000000000000000000000000000000000000000000000"
+    Block AA:BB:CC:DD:EE:FF from the internet on weeknights from 9pm to 7am
     ```
 
 46. **unblock_device**

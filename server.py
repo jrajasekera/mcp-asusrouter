@@ -1512,12 +1512,12 @@ async def schedule_device_block(
 ) -> Dict[str, Any]:
     """Block a device on a recurring time schedule.
 
-    Adds a TIME-type parental-control rule. Provide EITHER a raw ``timemap``
-    string (ASUS MULTIFILTER_MACFILTER_DAYTIME_V2 format — the trusted path),
-    OR friendly ``days`` + ``start_time`` + ``end_time``. Note: automatic
-    encoding of friendly inputs is not yet verified for all firmware and may
-    return an error asking for a raw ``timemap``. With no schedule args the
-    router's default schedule is used. Existing rules are preserved.
+    Adds a TIME-type parental-control rule. Provide EITHER friendly ``days`` +
+    ``start_time`` + ``end_time`` (encoded into the ASUS
+    MULTIFILTER_MACFILTER_DAYTIME_V2 format), OR a raw ``timemap`` string
+    (which overrides the friendly args). Days repeat weekly; an overnight window
+    is expressed as end < start (e.g. 21:00–07:00). With no schedule args the
+    library's default schedule is used. Existing rules are preserved.
 
     Parameters:
         mac (str): Device MAC address.

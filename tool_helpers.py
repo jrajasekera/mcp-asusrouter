@@ -13,10 +13,11 @@ class ScheduleEncodingError(Exception):
     """Raised when a schedule cannot be encoded into an ASUS timemap string."""
 
 
+# ASUS MULTIFILTER_MACFILTER_DAYTIME_V2 weekday numbering: Sunday=0 ... Saturday=6.
 _WEEKDAYS = {
-    "mon": 0, "monday": 0, "tue": 1, "tuesday": 1, "wed": 2, "wednesday": 2,
-    "thu": 3, "thursday": 3, "fri": 4, "friday": 4, "sat": 5, "saturday": 5,
-    "sun": 6, "sunday": 6,
+    "sun": 0, "sunday": 0, "mon": 1, "monday": 1, "tue": 2, "tuesday": 2,
+    "wed": 3, "wednesday": 3, "thu": 4, "thursday": 4, "fri": 5, "friday": 5,
+    "sat": 6, "saturday": 6,
 }
 
 
@@ -32,36 +33,45 @@ def _validate_days(days: List[str]) -> List[int]:
     return sorted(set(out))
 
 
-def _validate_hhmm(value: str, label: str) -> str:
+def _parse_hhmm(value: str, label: str, allow_24: bool = False) -> tuple[int, int]:
     parts = str(value).strip().split(":")
     if len(parts) != 2 or not (parts[0].isdigit() and parts[1].isdigit()):
         raise ValueError(f"{label} must be HH:MM, got {value!r}")
     h, m = int(parts[0]), int(parts[1])
-    if not (0 <= h <= 23 and 0 <= m <= 59):
+    max_h = 24 if allow_24 else 23
+    if not (0 <= h <= max_h and 0 <= m <= 59) or (h == 24 and m != 0):
         raise ValueError(f"{label} out of range: {value!r}")
-    return f"{h:02d}{m:02d}"
+    return h, m
 
 
 def build_timemap(days: List[str], start_time: str, end_time: str) -> str:
-    """Encode a weekly schedule into an ASUS MULTIFILTER_MACFILTER_DAYTIME_V2
+    """Encode a weekly schedule into an ASUS ``MULTIFILTER_MACFILTER_DAYTIME_V2``
     timemap string.
 
-    Validates inputs, then raises ``ScheduleEncodingError``: the exact wire
-    format is undocumented and unverified for this firmware, so automatic
-    encoding is intentionally not performed yet. Callers should pass a raw
-    ``timemap`` string instead. Once the format is confirmed on hardware (see
-    the plan's hardware checklist), replace the final ``raise`` with the real
-    encoder — inputs are already validated by this point.
+    Produces one segment per weekday, all sharing the same daily time window,
+    joined by ``<``. Each segment is ``W`` + ``1`` (enabled) + the weekday as two
+    digits (Sunday=0 ... Saturday=6) + start ``HHMM`` + end ``HHMM``. An overnight
+    window is expressed directly as end < start (e.g. 21:00->07:00); ``end_time``
+    may be ``24:00`` to mean end-of-day. Example:
+    ``build_timemap(["Mon", "Wed"], "09:00", "17:00")`` ->
+    ``"W10109001700<W10309001700"``.
+
+    The format was decoded from the router's own ``weekSchedule.js`` encoder and
+    verified round-tripping against an RT-AX55.
+
+    Args:
+        days: weekday names/abbreviations, e.g. ``["Mon", "Wed"]``.
+        start_time, end_time: ``"HH:MM"`` 24-hour strings.
+
+    Raises:
+        ValueError: on an unknown weekday or malformed/out-of-range time.
+        ScheduleEncodingError: when ``days`` is empty.
     """
-    _validate_days(days)
-    _validate_hhmm(start_time, "start_time")
-    _validate_hhmm(end_time, "end_time")
-    raise ScheduleEncodingError(
-        "Automatic schedule encoding is not yet verified for this router. "
-        "Pass a raw `timemap` string instead (capture one by setting the "
-        "schedule in the router web UI and reading it back via "
-        "list_parental_control_rules)."
-    )
+    weekdays = _validate_days(days)
+    sh, sm = _parse_hhmm(start_time, "start_time")
+    eh, em = _parse_hhmm(end_time, "end_time", allow_24=True)
+    segments = [f"W1{wd:02d}{sh:02d}{sm:02d}{eh:02d}{em:02d}" for wd in weekdays]
+    return "<".join(segments)
 
 
 def format_pc_rules(pc_data: Optional[Dict[str, Any]]) -> List[Dict[str, Any]]:
@@ -76,10 +86,14 @@ def format_pc_rules(pc_data: Optional[Dict[str, Any]]) -> List[Dict[str, Any]]:
     result: List[Dict[str, Any]] = []
     for mac, rule in rules.items():
         rule_type = getattr(rule, "type", None)
+        timemap = getattr(rule, "timemap", None)
+        if isinstance(timemap, str):
+            # The router returns the segment separator '<' HTML-encoded as '&#60'.
+            timemap = timemap.replace("&#60", "<")
         result.append({
             "mac": getattr(rule, "mac", mac),
             "name": getattr(rule, "name", "") or "",
             "type": getattr(rule_type, "name", str(rule_type)),
-            "timemap": getattr(rule, "timemap", None),
+            "timemap": timemap,
         })
     return result
