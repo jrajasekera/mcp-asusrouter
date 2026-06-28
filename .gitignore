@@ -6,6 +6,9 @@ __pycache__/
 # Virtual environments / uv
 .venv/
 
+# Local secrets / config
+.env
+
 # Tooling / IDE
 .idea/
 .serena/

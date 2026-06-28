@@ -16,26 +16,37 @@ from asusrouter.modules.wlan import AsusWLAN, Wlan
 
 
 from mcp.server.fastmcp import FastMCP
+from pydantic_settings import BaseSettings, SettingsConfigDict
 from typing import Dict, Any, Tuple, List, Optional
 
 mcp = FastMCP("Asus Router MCP Server", dependencies=["aiohttp", "asusrouter"])
 
-# Router configuration
-ROUTER_CONFIG = {
-    "hostname": "192.168.72.1",
-    "username": "admin",
-    "password": "Regina143$#",
-    "use_ssl": False
-}
+# Router configuration, loaded from environment variables / .env.
+# Required: ROUTER_HOSTNAME, ROUTER_PASSWORD. See .env.example.
+class RouterSettings(BaseSettings):
+    model_config = SettingsConfigDict(
+        env_prefix="ROUTER_",
+        env_file=".env",
+        env_file_encoding="utf-8",
+        extra="ignore",
+    )
+
+    hostname: str
+    username: str = "admin"
+    password: str
+    use_ssl: bool = False
+
+
+settings = RouterSettings()
 
 # Helper function to create router connection
 async def create_router_connection() -> Tuple[AsusRouter, aiohttp.ClientSession]:
     session = aiohttp.ClientSession()   
     router = AsusRouter(
-        hostname=ROUTER_CONFIG["hostname"],
-        username=ROUTER_CONFIG["username"],
-        password=ROUTER_CONFIG["password"],
-        use_ssl=ROUTER_CONFIG["use_ssl"],
+        hostname=settings.hostname,
+        username=settings.username,
+        password=settings.password,
+        use_ssl=settings.use_ssl,
         session=session
     )
     await router.async_connect()

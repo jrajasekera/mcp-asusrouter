@@ -569,6 +569,7 @@ dependencies = [
     { name = "aiohttp" },
     { name = "asusrouter" },
     { name = "mcp" },
+    { name = "pydantic-settings" },
 ]
 
 [package.metadata]
@@ -576,6 +577,7 @@ requires-dist = [
     { name = "aiohttp" },
     { name = "asusrouter" },
     { name = "mcp" },
+    { name = "pydantic-settings" },
 ]
 
 [[package]]

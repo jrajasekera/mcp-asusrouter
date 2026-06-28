@@ -37,16 +37,25 @@ client config entry:
 
 ## Configuration
 
-By default, the tools are configured to connect to a router at `192.168.72.1` with the username `admin`. You can modify the `ROUTER_CONFIG` dictionary in the script to match your router's details:
+Router connection settings are read from environment variables (or a local
+`.env` file) — no credentials live in the source. Copy `.env.example` to `.env`
+and fill it in:
 
-```python
-ROUTER_CONFIG = {
-    "hostname": "192.168.72.1",
-    "username": "admin",
-    "password": "your_password_here",
-    "use_ssl": False
-}
+```bash
+cp .env.example .env
+# then edit .env
 ```
+
+| Variable | Required | Default | Description |
+|----------|----------|---------|-------------|
+| `ROUTER_HOSTNAME` | yes | — | Router IP / hostname |
+| `ROUTER_PASSWORD` | yes | — | Admin password |
+| `ROUTER_USERNAME` | no | `admin` | Admin username |
+| `ROUTER_USE_SSL` | no | `false` | Connect over HTTPS |
+
+The variables may also be set directly in your MCP client config (e.g. an `env`
+block) instead of a `.env` file. The server fails fast with a clear error if a
+required value is missing.
 
 ## Available Tools
 
@@ -425,7 +434,7 @@ if __name__ == "__main__":
 
 ## Security Considerations
 
-- This script stores your router credentials in plain text. Consider implementing a more secure credential management approach for production.
+- Credentials are read from environment variables / a local `.env` file, which is git-ignored. Keep `.env` out of version control and restrict its file permissions.
 - All tools execute commands on your router. Be cautious when using tools that modify settings or reboot the device.
 - Some operations may cause temporary network disruptions or service interruptions.
 
