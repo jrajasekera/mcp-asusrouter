@@ -7,7 +7,7 @@ from asusrouter.modules.endpoint import EndpointTools # For ping
 from asusrouter.modules.led import AsusLED # For set_led_state
 from asusrouter.modules.aura import AsusAura # For set_aura_lighting
 from asusrouter.modules.color import ColorRGB # For set_aura_lighting color
-from asusrouter.modules.parental_control import AsusBlockAll, AsusParentalControl
+from asusrouter.modules.parental_control import AsusBlockAll, AsusParentalControl, ParentalControlRule, PCRuleType
 from asusrouter.modules.port_forwarding import AsusPortForwarding
 from asusrouter.modules.openvpn import AsusOVPNClient, AsusOVPNServer
 from asusrouter.modules.wireguard import AsusWireGuardClient, AsusWireGuardServer
@@ -18,7 +18,6 @@ from asusrouter.modules.wlan import AsusWLAN, Wlan
 from mcp.server.fastmcp import FastMCP
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from tool_helpers import build_timemap, format_pc_rules, ScheduleEncodingError
-from asusrouter.modules.parental_control import ParentalControlRule, PCRuleType
 from typing import Dict, Any, Tuple, List, Optional
 
 mcp = FastMCP("Asus Router MCP Server", dependencies=["aiohttp", "asusrouter"])
