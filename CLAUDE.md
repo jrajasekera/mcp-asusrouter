@@ -17,10 +17,7 @@ This is a [`uv`](https://docs.astral.sh/uv/) project.
 - Run the server (MCP stdio transport): `uv run python server.py`
 - Smoke-test that the module imports: `ROUTER_HOSTNAME=x ROUTER_PASSWORD=y uv run python -c "import server"`
 
-There is **no automated test suite**. To verify the server actually serves
-tools, launch it and complete an MCP `initialize` + `tools/list` handshake with
-any MCP client — it should report 46 tools. Listing tools does not connect to a
-router, so dummy credentials are sufficient for that check.
+Run the test suite with `uv run pytest`. It covers the pure helpers in `tool_helpers.py` and asserts all tools register. The suite does not connect to a real router. To verify the server actually serves tools end-to-end, launch it and complete an MCP `initialize` + `tools/list` handshake with any MCP client — it should report 46 tools.
 
 ## Configuration
 
