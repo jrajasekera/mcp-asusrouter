@@ -333,11 +333,11 @@ Expected: FAIL (assert: the two names are not in the set).
 In `server.py`, just after the line `from pydantic_settings import BaseSettings, SettingsConfigDict`, add:
 
 ```python
-from tool_helpers import build_timemap, format_pc_rules, ScheduleEncodingError
-from asusrouter.modules.parental_control import ParentalControlRule, PCRuleType
+from tool_helpers import format_pc_rules
 ```
 
-(All four names are used by Tasks 4–6; importing them once here is fine.)
+(Tasks 5 and 6 add their own imports for the names they introduce, so each
+task's diff only imports what it uses.)
 
 - [ ] **Step 4: Append the two read tools to `server.py`**
 
@@ -429,7 +429,15 @@ def test_block_tools_registered():
 Run: `uv run pytest tests/test_server_tools.py::test_block_tools_registered -v`
 Expected: FAIL.
 
-- [ ] **Step 3: Append the two tools to `server.py`** (before the `__main__` block)
+- [ ] **Step 3: Add the parental-control import, then append the two tools to `server.py`** (before the `__main__` block)
+
+First, just after the `from tool_helpers import format_pc_rules` line added in Task 4, add:
+
+```python
+from asusrouter.modules.parental_control import ParentalControlRule, PCRuleType
+```
+
+Then append:
 
 ```python
 @mcp.tool()
@@ -531,7 +539,15 @@ def test_schedule_tool_registered_and_total_count():
 Run: `uv run pytest tests/test_server_tools.py::test_schedule_tool_registered_and_total_count -v`
 Expected: FAIL.
 
-- [ ] **Step 3: Append the tool to `server.py`** (before the `__main__` block)
+- [ ] **Step 3: Extend the tool_helpers import, then append the tool to `server.py`** (before the `__main__` block)
+
+First, update the `from tool_helpers import format_pc_rules` line (added in Task 4) to:
+
+```python
+from tool_helpers import build_timemap, format_pc_rules, ScheduleEncodingError
+```
+
+Then append:
 
 ```python
 @mcp.tool()
