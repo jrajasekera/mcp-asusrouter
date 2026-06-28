@@ -1,2 +1,11 @@
-__pycache__
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+
+# Virtual environments / uv
+.venv/
+
+# Tooling / IDE
 .idea/
+.serena/

@@ -1384,14 +1384,7 @@ async def set_wifi_radio_state(band: str, enable: bool) -> Dict[str, Any]:
     except Exception as e:
         return {"error": f"Error setting WiFi radio state: {str(e)}"}
 
-# Main execution for testing (optional)
+# Main execution
 if __name__ == "__main__":
-    # To test a specific tool:
-    # async def main_test():
-    #     result = await get_connected_devices()
-    #     print(result)
-    # asyncio.run(main_test())
-    
-    # To run the MCP server (if you were to serve these tools via FastMCP)
-    # mcp.run() # This would typically be in your main server script
-    print("Asus Router MCP tools defined. Run with `mcp.run()` in your main server script.")
+    # Serve the tools over stdio — the transport MCP clients/agents connect to.
+    mcp.run()

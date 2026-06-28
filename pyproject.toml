@@ -1,0 +1,11 @@
+[project]
+name = "mcp-asusrouter"
+version = "0.1.0"
+description = "MCP server exposing ASUS router monitoring and management tools via FastMCP."
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "aiohttp",
+    "asusrouter",
+    "mcp",
+]

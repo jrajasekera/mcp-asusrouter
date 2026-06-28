@@ -4,10 +4,35 @@ This package provides a comprehensive suite of tools for interacting with ASUS r
 
 ## Installation
 
+This project is managed with [uv](https://docs.astral.sh/uv/). Install the
+dependencies into a local virtual environment with:
+
 ```bash
-pip install mcp
-pip install aiohttp
-pip install asusrouter
+uv sync
+```
+
+## Running the server
+
+The server speaks the MCP stdio transport, which is what MCP clients/agents
+connect to:
+
+```bash
+uv run python server.py
+```
+
+To register it with an MCP client, point the client at that command. Example
+client config entry:
+
+```json
+{
+  "mcpServers": {
+    "asusrouter": {
+      "command": "uv",
+      "args": ["run", "python", "server.py"],
+      "cwd": "/path/to/mcp-asusrouter"
+    }
+  }
+}
 ```
 
 ## Configuration
