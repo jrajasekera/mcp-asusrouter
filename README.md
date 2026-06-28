@@ -1,6 +1,27 @@
 # ASUS Router MCP
 
-This package provides a comprehensive suite of tools for interacting with ASUS routers via the FastMCP framework. It leverages the `asusrouter` Python library to enable remote monitoring and management of your ASUS Router.
+An MCP server that exposes ASUS router monitoring and management as a suite of
+tools for AI agents and MCP clients. It is a thin
+[FastMCP](https://github.com/modelcontextprotocol/python-sdk) wrapper over the
+[`asusrouter`](https://pypi.org/project/asusrouter/) Python library, which does
+the actual talking to your router.
+
+> ⚠️ **Some tools change router state** — reboot, firmware upgrade, blocking
+> devices, restarting services, changing Wi-Fi settings. An MCP client may invoke
+> these autonomously. See [Security Considerations](#security-considerations).
+
+## Requirements
+
+- **Python ≥ 3.11** and [uv](https://docs.astral.sh/uv/).
+- An **ASUS router** running AsusWRT (stock or Asuswrt-Merlin) reachable on your
+  network, with admin credentials.
+- Individual tools depend on router/firmware support for the underlying feature
+  (e.g. DSL, AiMesh, AURA, VPN). Unsupported features return an error or empty
+  result rather than crashing the server.
+
+Verified against an **RT-AX55**. Other AsusWRT models supported by the
+`asusrouter` library should work, but tool behavior can vary by model and
+firmware.
 
 ## Installation
 
@@ -9,30 +30,6 @@ dependencies into a local virtual environment with:
 
 ```bash
 uv sync
-```
-
-## Running the server
-
-The server speaks the MCP stdio transport, which is what MCP clients/agents
-connect to:
-
-```bash
-uv run python server.py
-```
-
-To register it with an MCP client, point the client at that command. Example
-client config entry:
-
-```json
-{
-  "mcpServers": {
-    "asusrouter": {
-      "command": "uv",
-      "args": ["run", "python", "server.py"],
-      "cwd": "/path/to/mcp-asusrouter"
-    }
-  }
-}
 ```
 
 ## Configuration
@@ -48,7 +45,7 @@ cp .env.example .env
 
 | Variable | Required | Default | Description |
 |----------|----------|---------|-------------|
-| `ROUTER_HOSTNAME` | yes | — | Router IP / hostname |
+| `ROUTER_HOSTNAME` | yes | — | Router IP / hostname (usually your LAN gateway, e.g. `192.168.50.1`) |
 | `ROUTER_PASSWORD` | yes | — | Admin password |
 | `ROUTER_USERNAME` | no | `admin` | Admin username |
 | `ROUTER_USE_SSL` | no | `false` | Connect over HTTPS |
@@ -57,9 +54,69 @@ The variables may also be set directly in your MCP client config (e.g. an `env`
 block) instead of a `.env` file. The server fails fast with a clear error if a
 required value is missing.
 
+## Running the server
+
+The server speaks the MCP stdio transport, which is what MCP clients/agents
+connect to:
+
+```bash
+uv run python server.py
+```
+
+It reads credentials from `.env` in the project directory (see
+[Configuration](#configuration)).
+
+### Use with Claude Code
+
+```bash
+claude mcp add asusrouter --scope user -- \
+  uv run --directory /absolute/path/to/mcp-asusrouter python server.py
+```
+
+`--directory` makes the server run from the project directory so it finds
+`.env`. Restart Claude Code (MCP servers load at session start), then the
+`asusrouter` tools are available.
+
+### Use with Claude Desktop (or any stdio MCP client)
+
+Add an entry to the client's MCP config (for Claude Desktop:
+`claude_desktop_config.json`):
+
+```json
+{
+  "mcpServers": {
+    "asusrouter": {
+      "command": "uv",
+      "args": ["run", "--directory", "/absolute/path/to/mcp-asusrouter", "python", "server.py"]
+    }
+  }
+}
+```
+
+If you prefer not to use a `.env` file, supply the credentials inline instead:
+
+```json
+{
+  "mcpServers": {
+    "asusrouter": {
+      "command": "uv",
+      "args": ["run", "--directory", "/absolute/path/to/mcp-asusrouter", "python", "server.py"],
+      "env": { "ROUTER_HOSTNAME": "192.168.50.1", "ROUTER_PASSWORD": "your-password" }
+    }
+  }
+}
+```
+
 ## Available Tools
 
-Below are all available tools with descriptions and numbered example prompts.
+Every tool returns a JSON object. On failure it returns `{"error": "<message>"}`
+rather than raising, and a tool with nothing to report returns
+`{"message": "..."}`. Argument and return schemas are exposed to your MCP client
+at runtime (from each tool's signature and docstring).
+
+> ⚠️ Tools in **System Maintenance**, **WiFi Management**, **Network Security &
+> Management**, and **VPN Management** change router state and can interrupt your
+> network. The rest are read-only.
 
 ### Device Information
 
@@ -155,7 +212,7 @@ Below are all available tools with descriptions and numbered example prompts.
 
 ### Dynamic DNS
 
-42. **get_ddns_status**
+12. **get_ddns_status**
     Retrieves the router's Dynamic DNS configuration and current registration status.
 
     Example prompt:
@@ -165,7 +222,7 @@ Below are all available tools with descriptions and numbered example prompts.
 
 ### System Performance
 
-12. **get_system_info**
+13. **get_system_info**
     Retrieves comprehensive system information.
 
     Example prompt:
@@ -173,7 +230,7 @@ Below are all available tools with descriptions and numbered example prompts.
     Give me a complete system overview of my router
     ```
 
-13. **get_cpu_ram_usage**
+14. **get_cpu_ram_usage**
     Gets CPU and RAM utilization statistics.
 
     Example prompt:
@@ -181,7 +238,7 @@ Below are all available tools with descriptions and numbered example prompts.
     What's the current CPU and RAM usage on my router?
     ```
 
-14. **get_temperature**
+15. **get_temperature**
     Retrieves temperature readings from various sensors.
 
     Example prompt:
@@ -189,7 +246,7 @@ Below are all available tools with descriptions and numbered example prompts.
     Is my router running hot? Show me all temperature readings
     ```
 
-15. **get_firmware_info**
+16. **get_firmware_info**
     Gets firmware version and update availability information.
 
     Example prompt:
@@ -197,7 +254,7 @@ Below are all available tools with descriptions and numbered example prompts.
     Check if there's a firmware update available for my router
     ```
 
-16. **check_firmware_updates**
+17. **check_firmware_updates**
     Triggers a check for new firmware updates.
 
     Example prompt:
@@ -205,7 +262,7 @@ Below are all available tools with descriptions and numbered example prompts.
     Force check for new firmware updates now
     ```
 
-17. **start_firmware_upgrade**
+18. **start_firmware_upgrade**
     Initiates a firmware upgrade if an update is available.
 
     Example prompt:
@@ -215,7 +272,7 @@ Below are all available tools with descriptions and numbered example prompts.
 
 ### Network Security & Management
 
-18. **get_parental_control**
+19. **get_parental_control**
     Retrieves parental control configuration and rule settings.
 
     Example prompt:
@@ -223,7 +280,7 @@ Below are all available tools with descriptions and numbered example prompts.
     Show me my current parental control settings and active rules
     ```
 
-19. **set_parental_control_global_state**
+20. **set_parental_control_global_state**
     Enables or disables the Parental Controls feature globally.
 
     Example prompt:
@@ -231,7 +288,7 @@ Below are all available tools with descriptions and numbered example prompts.
     Enable parental controls on my router
     ```
 
-20. **set_parental_control_block_all**
+21. **set_parental_control_block_all**
     Enables or disables the 'Block All Internet Access' feature.
 
     Example prompt:
@@ -239,7 +296,7 @@ Below are all available tools with descriptions and numbered example prompts.
     Block all internet access for all devices right now
     ```
 
-21. **get_port_forwarding**
+22. **get_port_forwarding**
     Gets port forwarding rules and configuration.
 
     Example prompt:
@@ -247,7 +304,7 @@ Below are all available tools with descriptions and numbered example prompts.
     List all my configured port forwarding rules
     ```
 
-22. **set_port_forwarding_global_state**
+23. **set_port_forwarding_global_state**
     Enables or disables Port Forwarding globally.
 
     Example prompt:
@@ -255,15 +312,15 @@ Below are all available tools with descriptions and numbered example prompts.
     Disable all port forwarding rules temporarily
     ```
 
-43. **list_parental_control_rules**
-    Lists all active parental control rules with device names, MAC addresses, and current block status.
+24. **list_parental_control_rules**
+    Lists all active parental control rules with device names, MAC addresses, type, and schedule.
 
     Example prompt:
     ```
     Show me all parental control rules and which devices are currently blocked
     ```
 
-44. **block_device**
+25. **block_device**
     Blocks a device from internet access by adding an always-on parental control rule for the given MAC address.
 
     Example prompt:
@@ -271,15 +328,15 @@ Below are all available tools with descriptions and numbered example prompts.
     Block the device with MAC address AA:BB:CC:DD:EE:FF from the internet
     ```
 
-45. **schedule_device_block**
-    Applies a scheduled parental control block for a device. Pass friendly `days` + `start_time` + `end_time` and it's encoded into the ASUS timemap format, or pass a raw `timemap` string to override.
+26. **schedule_device_block**
+    Blocks a device on a recurring weekly schedule (see [Scheduling a device block](#scheduling-a-device-block)).
 
     Example prompt:
     ```
     Block AA:BB:CC:DD:EE:FF from the internet on weeknights from 9pm to 7am
     ```
 
-46. **unblock_device**
+27. **unblock_device**
     Removes an existing parental control block rule for the specified MAC address, restoring internet access.
 
     Example prompt:
@@ -289,7 +346,7 @@ Below are all available tools with descriptions and numbered example prompts.
 
 ### VPN Management
 
-23. **get_vpn_config**
+28. **get_vpn_config**
     Retrieves VPN client and server configuration status.
 
     Example prompt:
@@ -297,7 +354,7 @@ Below are all available tools with descriptions and numbered example prompts.
     Show me the status of all my VPN configurations
     ```
 
-24. **get_vpn_fusion_status**
+29. **get_vpn_fusion_status**
     Gets VPN Fusion (VPNC) status and configurations.
 
     Example prompt:
@@ -305,7 +362,7 @@ Below are all available tools with descriptions and numbered example prompts.
     What's the current status of my VPN Fusion profiles?
     ```
 
-25. **control_openvpn_client**
+30. **control_openvpn_client**
     Enables or disables a specific OpenVPN client profile.
 
     Example prompt:
@@ -313,7 +370,7 @@ Below are all available tools with descriptions and numbered example prompts.
     Connect to my OpenVPN client profile #2
     ```
 
-26. **control_openvpn_server**
+31. **control_openvpn_server**
     Enables or disables a specific OpenVPN server.
 
     Example prompt:
@@ -321,7 +378,7 @@ Below are all available tools with descriptions and numbered example prompts.
     Turn off my OpenVPN server
     ```
 
-27. **control_wireguard_client**
+32. **control_wireguard_client**
     Enables or disables a specific WireGuard client profile.
 
     Example prompt:
@@ -329,7 +386,7 @@ Below are all available tools with descriptions and numbered example prompts.
     Connect to my WireGuard VPN #1
     ```
 
-28. **control_wireguard_server**
+33. **control_wireguard_server**
     Enables or disables a specific WireGuard server.
 
     Example prompt:
@@ -337,7 +394,7 @@ Below are all available tools with descriptions and numbered example prompts.
     Enable my WireGuard server to allow remote connections
     ```
 
-29. **control_vpn_fusion_client**
+34. **control_vpn_fusion_client**
     Enables or disables a VPN Fusion client profile.
 
     Example prompt:
@@ -347,7 +404,7 @@ Below are all available tools with descriptions and numbered example prompts.
 
 ### WiFi Management
 
-30. **set_wifi_settings**
+35. **set_wifi_settings**
     Configures wireless network settings.
 
     Example prompt:
@@ -355,7 +412,7 @@ Below are all available tools with descriptions and numbered example prompts.
     Change my 5GHz WiFi password to "NewSecurePassword2023!"
     ```
 
-31. **set_wifi_radio_state**
+36. **set_wifi_radio_state**
     Enables or disables the radio for a specific WiFi band.
 
     Example prompt:
@@ -365,7 +422,7 @@ Below are all available tools with descriptions and numbered example prompts.
 
 ### System Maintenance
 
-32. **reboot_router**
+37. **reboot_router**
     Initiates a router reboot.
 
     Example prompt:
@@ -373,7 +430,7 @@ Below are all available tools with descriptions and numbered example prompts.
     Reboot my router now
     ```
 
-33. **rebuild_aimesh_network**
+38. **rebuild_aimesh_network**
     Triggers a rebuild of the AiMesh network.
 
     Example prompt:
@@ -381,7 +438,7 @@ Below are all available tools with descriptions and numbered example prompts.
     My mesh network seems unstable, rebuild the AiMesh network
     ```
 
-34. **restart_dns_service**
+39. **restart_dns_service**
     Restarts the DNS service on the router.
 
     Example prompt:
@@ -389,7 +446,7 @@ Below are all available tools with descriptions and numbered example prompts.
     I'm having DNS issues, restart the DNS service
     ```
 
-35. **restart_httpd_service**
+40. **restart_httpd_service**
     Restarts the router's web server.
 
     Example prompt:
@@ -399,7 +456,7 @@ Below are all available tools with descriptions and numbered example prompts.
 
 ### LED & Lighting Control
 
-36. **get_led_status**
+41. **get_led_status**
     Gets router LED status information.
 
     Example prompt:
@@ -407,7 +464,7 @@ Below are all available tools with descriptions and numbered example prompts.
     Are my router LED lights currently on or off?
     ```
 
-37. **set_led_state**
+42. **set_led_state**
     Turns router LEDs on or off.
 
     Example prompt:
@@ -415,7 +472,7 @@ Below are all available tools with descriptions and numbered example prompts.
     Turn off all the LED lights on my router for the night
     ```
 
-38. **set_aura_lighting**
+43. **set_aura_lighting**
     Controls ASUS AURA RGB lighting effects.
 
     Example prompt:
@@ -425,7 +482,7 @@ Below are all available tools with descriptions and numbered example prompts.
 
 ### Advanced Tools
 
-39. **get_devicemap**
+44. **get_devicemap**
     Gets comprehensive device map information (raw data).
 
     Example prompt:
@@ -433,7 +490,7 @@ Below are all available tools with descriptions and numbered example prompts.
     Show me the detailed devicemap data from my router
     ```
 
-40. **get_router_flags**
+45. **get_router_flags**
     Gets internal router flags and states.
 
     Example prompt:
@@ -441,7 +498,7 @@ Below are all available tools with descriptions and numbered example prompts.
     Show me all internal router flags for debugging
     ```
 
-41. **get_vpn_fusion_client_list_raw**
+46. **get_vpn_fusion_client_list_raw**
     Gets the raw VPN Fusion client list string.
 
     Example prompt:
@@ -449,30 +506,51 @@ Below are all available tools with descriptions and numbered example prompts.
     Show me the raw VPN Fusion client list configuration string
     ```
 
-## Example Usage in Code
+### Scheduling a device block
 
-```python
-from mcp.server.fastmcp import FastMCP
-import asyncio
+`schedule_device_block` accepts either friendly inputs or a raw schedule string:
 
-# Initialize the MCP server
-mcp = FastMCP("Asus Router MCP Server", dependencies=["aiohttp", "asusrouter"])
+- **Friendly:** `days` (e.g. `["Mon", "Wed"]`), `start_time` and `end_time` as
+  `"HH:MM"` (24-hour). They're encoded into the ASUS
+  `MULTIFILTER_MACFILTER_DAYTIME_V2` format. An overnight window is expressed as
+  end earlier than start (e.g. `21:00`–`07:00`); `end_time` may be `24:00` for
+  end-of-day.
+- **Raw:** pass a `timemap` string directly (overrides the friendly args). Each
+  segment is `W` + `1` + weekday (two digits, **Sunday=0 … Saturday=6**) +
+  start `HHMM` + end `HHMM`, with segments joined by `<`. For example, Mon & Wed
+  09:00–17:00 is `W10109001700<W10309001700`.
 
-# Define the tools as in the main script
+With no schedule arguments, the library's default schedule is applied.
 
-# Run the server
-if __name__ == "__main__":
-    # Test a specific tool
-    async def test_connected_devices():
-        result = await get_connected_devices()
-        print(result)
-    
-    # Run the test
-    asyncio.run(test_connected_devices())
-    
-    # Or run the full MCP server
-    # mcp.run()
+## Development & Testing
+
+```bash
+uv sync                 # install runtime + dev dependencies
+uv run pytest -q        # run the test suite
 ```
+
+The tests don't connect to a real router — a root `conftest.py` injects dummy
+`ROUTER_*` credentials so `server.py` can be imported, and the suite covers the
+pure helpers (`tool_helpers.py`) and tool registration. Anything that actually
+touches the router requires a real device.
+
+See [`CONTRIBUTING.md`](CONTRIBUTING.md) for the tool pattern and conventions,
+and [`CLAUDE.md`](CLAUDE.md) for the architecture in depth.
+
+## Troubleshooting
+
+- **`ValidationError ... ROUTER_HOSTNAME` / `ROUTER_PASSWORD` field required` on
+  startup** — credentials aren't set. Create `.env` (see
+  [Configuration](#configuration)) or pass them via your client's `env` block.
+- **Tools return `{"error": ...}` with a connection/timeout message** — wrong
+  `ROUTER_HOSTNAME` (use the router's LAN IP, usually your default gateway),
+  wrong credentials, or an `ROUTER_USE_SSL` mismatch (try toggling it).
+- **The server starts but your client shows no tools** — make sure the client
+  launches it with `uv run --directory <absolute-path>` so it runs from the
+  project directory; some clients strip inherited environment variables, so rely
+  on `.env` (read from that directory) or an explicit `env` block.
+- **A feature-specific tool returns an error or empty result** — your router or
+  firmware may not support that feature (DSL, AURA, AiMesh, VPN, etc.).
 
 ## Security Considerations
 
@@ -480,10 +558,19 @@ if __name__ == "__main__":
 - All tools execute commands on your router. Be cautious when using tools that modify settings or reboot the device.
 - Some operations may cause temporary network disruptions or service interruptions.
 
-## Contributions
+## Contributing
 
-Feel free to extend this set of tools with additional functionality. The `asusrouter` library offers many more capabilities that could be exposed through additional MCP tools.
+Contributions are welcome — the `asusrouter` library offers many more
+capabilities that could be exposed as additional MCP tools. See
+[`CONTRIBUTING.md`](CONTRIBUTING.md) for setup, the tool pattern, and conventions.
+
+## Credits
+
+- Built on the [`asusrouter`](https://github.com/Vaskivskyi/asusrouter) library
+  by Yevhenii Vaskivskyi.
+- This project is a fork of
+  [`rgestudillo/mcp-asusrouter`](https://github.com/rgestudillo/mcp-asusrouter).
 
 ## License
 
-This script is provided as-is under the MIT license.
+Released under the [MIT License](LICENSE).

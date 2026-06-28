@@ -37,7 +37,8 @@ away from an in-source config dict. `.env` is git-ignored; `.env.example` is not
 
 ## Architecture
 
-Everything lives in `server.py` (~1400 lines):
+The tools live in `server.py` (~1400 lines); pure, side-effect-free helpers live
+in `tool_helpers.py` (so they're unit-testable without importing `server.py`):
 
 - A single `FastMCP` instance named `mcp`, with 46 `@mcp.tool()`-decorated async
   functions. `if __name__ == "__main__": mcp.run()` serves them over stdio.
