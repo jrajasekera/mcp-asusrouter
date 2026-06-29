@@ -12,3 +12,7 @@ __pycache__/
 # Tooling / IDE
 .idea/
 .serena/
+.playwright-mcp/
+
+# Local scratch files
+weekSchedule_src.js
